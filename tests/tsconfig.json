@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["./src/*"],
+      "next/headers": ["./tests/stubs/headers.ts"],
+      "next/cache": ["./tests/stubs/cache.ts"],
+      "next/navigation": ["./tests/stubs/navigation.ts"],
+      "server-only": ["./tests/stubs/server-only.ts"]
+    }
+  },
+  "include": ["../src/**/*.ts", "./**/*.ts"]
+}
