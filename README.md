@@ -6,14 +6,14 @@ Team calendar for a 24/7, flexible-hours team: who is working when (in your own 
 
 ```bash
 pnpm install
-pnpm db:migrate   # creates data/app.db
+pnpm db:migrate   # creates a local Postgres (PGlite) in data/pglite, no install needed
 pnpm db:seed      # demo team, password "password" for everyone
 pnpm dev
 ```
 
 Demo logins: `admin@team.local`, `hr@team.local`, `mei@team.local`, `diego@team.local` (remote, New York), `hana@team.local` (remote, Tokyo).
 
-`pnpm test` runs the rules self-check.
+`pnpm test` runs the rules self-check. `pnpm test:e2e` drives every server action against an in-memory Postgres.
 
 ## Rules (all editable in Settings by admins and HR)
 
@@ -39,8 +39,15 @@ Members have a joining date and, when they leave, a leaving date. Former members
 
 ## Stack
 
-Next.js 16 (App Router, server actions), shadcn/ui on Base UI, Tailwind 4, Motion, Drizzle + SQLite (libsql). Cookie session auth.
+Next.js 16 (App Router, server actions), shadcn/ui on Base UI, Tailwind 4, Motion, Drizzle + Postgres (Supabase in production, PGlite locally). Cookie session auth.
 
 ## Going hosted
 
-Swap `src/db/index.ts` to `drizzle-orm/postgres-js` and the schema imports to `drizzle-orm/pg-core`, point `DATABASE_URL` at Supabase, replace `src/lib/auth.ts` with Supabase Auth, deploy to Vercel.
+Production runs on Supabase project `shiftsandleaves` (ap-south-1, Mumbai) and Vercel region `bom1` (`vercel.json`). Keep them in the same region.
+
+Environment variables (Vercel and `.env.local`):
+
+- `DATABASE_URL`: the **Transaction pooler** string from Supabase → Connect (port 6543). A `postgres://` URL switches the app from PGlite to Supabase.
+- `SESSION_SECRET`: a long random string (`openssl rand -hex 32`).
+
+Schema changes: edit `src/db/schema.ts`, `pnpm db:generate`, then `DATABASE_URL=... pnpm db:migrate`. All tables have RLS on with no policies: the app connects as the database owner, and Supabase's public Data API sees nothing. `pnpm db:seed` refuses to run against a hosted database (demo accounts all use "password").

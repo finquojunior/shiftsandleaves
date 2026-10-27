@@ -11,11 +11,11 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:generate": "drizzle-kit generate",
     "test": "tsx src/lib/rules.test.ts",
-    "test:e2e": "rm -f data/test.db* && DATABASE_URL=file:./data/test.db tsx --tsconfig tests/tsconfig.json tests/scenarios.ts"
+    "test:e2e": "DATABASE_URL=memory:// tsx --tsconfig tests/tsconfig.json tests/scenarios.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
-    "@libsql/client": "^0.18.0",
+    "@electric-sql/pglite": "0.5.8",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
     "date-fns": "^4.4.0",
@@ -25,6 +25,7 @@
     "motion": "^14.6.0",
     "next": "16.4.3",
     "next-themes": "^0.4.6",
+    "postgres": "3.4.9",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "shadcn": "^4.22.1",

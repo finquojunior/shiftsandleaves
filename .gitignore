@@ -40,4 +40,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 data/*.db*
+data/pglite/
 .playwright-mcp/
+
+# local notes with credentials
+secret.txt

@@ -7,7 +7,8 @@ import type { User } from "@/db/schema";
 import { isCurrent } from "./rules";
 
 // ponytail: signed cookie holding the user id. Swap for Supabase Auth when going hosted.
-const SECRET = process.env.SESSION_SECRET ?? "dev-secret-change-me";
+// empty counts as unset; production must set a real one or every session cookie would be forgeable
+const SECRET = process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? "" : "dev-secret-change-me");
 const COOKIE = "session";
 
 export function hashPassword(pw: string) {
@@ -19,7 +20,10 @@ export function verifyPassword(pw: string, stored: string) {
   return timingSafeEqual(scryptSync(pw, salt, 32), Buffer.from(hash, "hex"));
 }
 
-const sign = (id: number) => createHmac("sha256", SECRET).update(String(id)).digest("hex");
+const sign = (id: number) => {
+  if (!SECRET) throw new Error("SESSION_SECRET is not set");
+  return createHmac("sha256", SECRET).update(String(id)).digest("hex");
+};
 
 export async function setSession(userId: number) {
   (await cookies()).set(COOKIE, `${userId}.${sign(userId)}`, { httpOnly: true, sameSite: "lax", path: "/", secure: process.env.NODE_ENV === "production" });

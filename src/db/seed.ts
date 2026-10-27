@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { db, schema } from "./index";
 import { hashPassword } from "@/lib/auth";
 
@@ -5,15 +6,10 @@ const day = (s: number, e: number) => Array.from({ length: 7 }, () => [{ start: 
 const split = (...slots: [number, number][]) => Array.from({ length: 7 }, () => slots.map(([start, end]) => ({ start, end })));
 const pw = hashPassword("password");
 
-async function main() {
-  await db.delete(schema.events);
-  await db.delete(schema.notifications);
-  await db.delete(schema.requestDays);
-  await db.delete(schema.requests);
-  await db.delete(schema.users);
-  await db.delete(schema.departments);
-  await db.delete(schema.festiveDays);
-  await db.delete(schema.settings);
+/** demo data, wipes everything first. Local dev and tests only: every account's password is "password". */
+export async function seed() {
+  if (process.env.DATABASE_URL?.startsWith("postgres")) throw new Error("Refusing to seed demo accounts into a hosted database");
+  await db.execute(sql`truncate events, notifications, request_days, requests, users, departments, festive_days, settings restart identity cascade`);
 
   const [eng, sup, des] = await db
     .insert(schema.departments)
@@ -52,6 +48,6 @@ async function main() {
     { key: "festive_quota", value: 6 },
     { key: "late_hours", value: 24 },
   ]);
-  console.log("seeded");
 }
-main();
+
+if (process.argv[1]?.endsWith("seed.ts")) seed().then(() => { console.log("seeded"); process.exit(0); });

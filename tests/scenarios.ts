@@ -1,11 +1,12 @@
 /**
- * End-to-end scenario suite. Drives the real server actions against data/test.db.
+ * End-to-end scenario suite. Drives the real server actions against an in-memory Postgres (PGlite).
  * Run: pnpm test:e2e
  * Each group reseeds the database. A FAIL means behaviour differs from the agreed spec.
  */
-import { execSync } from "node:child_process";
 import { and, desc, eq } from "drizzle-orm";
-import { migrate } from "drizzle-orm/libsql/migrator";
+import { migrate } from "drizzle-orm/pglite/migrator";
+import type { PgliteDatabase } from "drizzle-orm/pglite";
+import { seed } from "@/db/seed";
 import { db, schema } from "@/db";
 import { setSession, verifyPassword } from "@/lib/auth";
 import { avatarUrl, effectiveDay, getAllUsers, getDayRows, getRequestsFor, coverageFor } from "@/lib/data";
@@ -31,7 +32,6 @@ async function safe<T>(name: string, fn: () => Promise<T>): Promise<T | undefine
   try { return await fn(); } catch (e) { check(name, false, `threw: ${String(e).slice(0, 160)}`); return undefined; }
 }
 
-const reseed = () => execSync("pnpm exec tsx src/db/seed.ts", { env: { ...process.env, DATABASE_URL: "file:./data/test.db" }, stdio: "pipe" });
 const U = async (email: string) => (await db.query.users.findFirst({ where: eq(schema.users.email, email) }))!;
 const as = async (who: string) => { const u = await U(`${who}@team.local`); await setSession(u.id); return u; };
 const req = async (id: number) => (await db.query.requests.findFirst({ where: eq(schema.requests.id, id) }))!;
@@ -49,13 +49,13 @@ const day = (s: number, e: number) => Array.from({ length: 7 }, () => [{ start: 
 
 async function G(name: string, fn: () => Promise<void>) {
   group = name;
-  reseed();
+  await seed();
   try { await fn(); } catch (e) { check("group crashed", false, String(e).slice(0, 300)); }
 }
 
 // ---------- scenarios ----------
 async function main() {
-  await migrate(db, { migrationsFolder: "drizzle" });
+  await migrate(db as unknown as PgliteDatabase, { migrationsFolder: "drizzle" });
 
   await G("01 Auth and passwords", async () => {
     const f = new FormData(); f.set("email", "mei@team.local"); f.set("password", "nope");

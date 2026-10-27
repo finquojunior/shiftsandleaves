@@ -11,9 +11,9 @@ importers:
       '@base-ui/react':
         specifier: ^1.9.0
         version: 1.9.0(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@libsql/client':
-        specifier: ^0.18.0
-        version: 0.18.0
+      '@electric-sql/pglite':
+        specifier: 0.5.8
+        version: 0.5.8
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -28,7 +28,7 @@ importers:
         version: 3.2.0(date-fns@4.4.0)
       drizzle-orm:
         specifier: ^0.45.4
-        version: 0.45.4(@libsql/client@0.18.0)(better-sqlite3@13.0.3)
+        version: 0.45.4(@electric-sql/pglite@0.5.8)(@libsql/client@0.18.0)(better-sqlite3@13.0.3)(postgres@3.4.9)
       lucide-react:
         specifier: ^1.61.0
         version: 1.61.0(@types/react@19.3.0)(react@19.3.0)
@@ -41,6 +41,9 @@ importers:
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      postgres:
+        specifier: 3.4.9
+        version: 3.4.9
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -265,6 +268,9 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@electric-sql/pglite@0.5.8':
+    resolution: {integrity: sha512-n9tsbUOhwx2epK1V0ZG9Ar4SHWUju04dhmzZXiSBXwBoleOvIfals33NAaWgagQVAL4Rbvx/Ptsu3P+pA09f6Q==}
 
   '@emnapi/core@1.10.0':
     resolution: {integrity: sha512-yq6OkJ4p82CAfPl0u9mQebQHKPJkY7WrIuk205cTYnYe+k2Z8YBh11FrbRG/H6ihirqcacOgl2BIO8oyMQLeXw==}
@@ -3143,6 +3149,10 @@ packages:
     resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
     engines: {node: ^10 || ^12 || >=14}
 
+  postgres@3.4.9:
+    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
+    engines: {node: '>=12'}
+
   powershell-utils@0.2.1:
     resolution: {integrity: sha512-C+y9x90UElAddDZmV4qOx9W53B61PO7cIqWz2dQsWlwswuq4mr8NEwytdGKboYbQlGZ3awrkTeNvcZiZNHnQ8A==}
     engines: {node: '>=20'}
@@ -3931,6 +3941,8 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
+  '@electric-sql/pglite@0.5.8': {}
+
   '@emnapi/core@1.10.0':
     dependencies:
       '@emnapi/wasi-threads': 1.2.1
@@ -4408,10 +4420,12 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+    optional: true
 
   '@libsql/core@0.18.0':
     dependencies:
       js-base64: 3.9.4
+    optional: true
 
   '@libsql/darwin-arm64@0.5.29':
     optional: true
@@ -4426,6 +4440,7 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+    optional: true
 
   '@libsql/isomorphic-ws@0.1.5':
     dependencies:
@@ -4434,6 +4449,7 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+    optional: true
 
   '@libsql/linux-arm-gnueabihf@0.5.29':
     optional: true
@@ -4485,7 +4501,8 @@ snapshots:
       '@tybys/wasm-util': 0.10.4
     optional: true
 
-  '@neon-rs/load@0.0.4': {}
+  '@neon-rs/load@0.0.4':
+    optional: true
 
   '@next/env@16.4.3': {}
 
@@ -4660,6 +4677,7 @@ snapshots:
   '@types/node@20.19.43':
     dependencies:
       undici-types: 6.21.0
+    optional: true
 
   '@types/node@22.20.5':
     dependencies:
@@ -4678,6 +4696,7 @@ snapshots:
   '@types/ws@8.18.2':
     dependencies:
       '@types/node': 20.19.43
+    optional: true
 
   '@typescript-eslint/eslint-plugin@8.72.0(@typescript-eslint/parser@8.72.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3))(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)':
     dependencies:
@@ -5195,7 +5214,8 @@ snapshots:
 
   depd@2.0.0: {}
 
-  detect-libc@2.0.2: {}
+  detect-libc@2.0.2:
+    optional: true
 
   detect-libc@2.1.2: {}
 
@@ -5218,10 +5238,12 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.15
 
-  drizzle-orm@0.45.4(@libsql/client@0.18.0)(better-sqlite3@13.0.3):
+  drizzle-orm@0.45.4(@electric-sql/pglite@0.5.8)(@libsql/client@0.18.0)(better-sqlite3@13.0.3)(postgres@3.4.9):
     optionalDependencies:
+      '@electric-sql/pglite': 0.5.8
       '@libsql/client': 0.18.0
       better-sqlite3: 13.0.3
+      postgres: 3.4.9
 
   dunder-proto@1.0.1:
     dependencies:
@@ -6155,7 +6177,8 @@ snapshots:
 
   jose@6.2.13: {}
 
-  js-base64@3.9.4: {}
+  js-base64@3.9.4:
+    optional: true
 
   js-tokens@4.0.0: {}
 
@@ -6229,6 +6252,7 @@ snapshots:
       '@libsql/linux-x64-gnu': 0.5.29
       '@libsql/linux-x64-musl': 0.5.29
       '@libsql/win32-x64-msvc': 0.5.29
+    optional: true
 
   lightningcss-android-arm64@1.32.0:
     optional: true
@@ -6595,6 +6619,8 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.2
 
+  postgres@3.4.9: {}
+
   powershell-utils@0.2.1: {}
 
   prelude-ls@1.2.1: {}
@@ -6603,7 +6629,8 @@ snapshots:
     dependencies:
       parse-ms: 4.0.0
 
-  promise-limit@2.7.0: {}
+  promise-limit@2.7.0:
+    optional: true
 
   prompts@2.4.2:
     dependencies:
@@ -7256,7 +7283,8 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.22.0: {}
+  ws@8.22.0:
+    optional: true
 
   wsl-utils@1.0.1:
     dependencies:
