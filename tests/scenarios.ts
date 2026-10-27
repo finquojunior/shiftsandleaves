@@ -8,8 +8,10 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
 import { seed } from "@/db/seed";
 import { db, schema } from "@/db";
-import { setSession, verifyPassword } from "@/lib/auth";
-import { avatarUrl, effectiveDay, getAllUsers, getDayRows, getRequestsFor, coverageFor } from "@/lib/data";
+import { currentUser, setSession, verifyPassword } from "@/lib/auth";
+import { cookies } from "next/headers";
+import robots from "@/app/robots";
+import { avatarUrl, effectiveDay, getAllUsers, getDayRows, getRequestDetail, getRequestsFor, coverageFor } from "@/lib/data";
 import { analytics } from "@/lib/analytics";
 import { login } from "@/actions/auth";
 import { cancelRequest, decide, logDiscussion, markNotificationRead, markNotificationsRead, submitHours, submitLeave, submitReopen, submitSchedule, submitWfh, type Result } from "@/actions/requests";
@@ -33,7 +35,7 @@ async function safe<T>(name: string, fn: () => Promise<T>): Promise<T | undefine
 }
 
 const U = async (email: string) => (await db.query.users.findFirst({ where: eq(schema.users.email, email) }))!;
-const as = async (who: string) => { const u = await U(`${who}@team.local`); await setSession(u.id); return u; };
+const as = async (who: string) => { const u = await U(`${who}@team.local`); await setSession(u); return u; };
 const req = async (id: number) => (await db.query.requests.findFirst({ where: eq(schema.requests.id, id) }))!;
 const lastNotes = async (who: string, n = 5) => db.query.notifications.findMany({ where: eq(schema.notifications.userId, (await U(`${who}@team.local`)).id), orderBy: desc(schema.notifications.id), limit: n });
 const events = async (id: number) => db.select().from(schema.events).where(eq(schema.events.requestId, id));
@@ -450,6 +452,54 @@ async function main() {
     check("department filter limits people", dept.people.every((x) => x.department === "Engineering"));
     const former = await analytics({ from: "2026-01-01", to: "2026-12-31", dept: null, users: [], status: "approved" });
     check("former members included in reports", former.people.some((x) => x.name === "Ravi Menon"));
+  });
+
+  await G("19 Security", async () => {
+    const jar = await cookies();
+    const signIn = async (email: string, password: string) => {
+      const f = new FormData(); f.set("email", email); f.set("password", password);
+      return login(null, f).then((r) => r?.error ?? "no redirect", (e) => (String(e).includes("redirect") ? "ok" : String(e)));
+    };
+
+    // sessions
+    await as("mei");
+    const good = jar.get("session")!.value;
+    const [uid, , sig] = good.split(".");
+    check("session cookie carries an expiry", good.split(".").length === 3);
+    jar.set("session", `${uid}.${Date.now() - 1000}.${sig}`);
+    check("expired session rejected", (await currentUser()) === null);
+    jar.set("session", `${uid}.${good.split(".")[1]}.${"0".repeat(sig.length)}`);
+    check("tampered session rejected", (await currentUser()) === null);
+    jar.set("session", good.replace(/^\d+/, String((await U("admin@team.local")).id)));
+    check("session can't be moved to another user", (await currentUser()) === null);
+    jar.set("session", good);
+    check("valid session accepted", (await currentUser())?.email === "mei@team.local");
+
+    await as("admin"); await saveUser({ ...(await U("mei@team.local")), password: "reset1234" });
+    jar.set("session", good);
+    check("admin password reset signs the person out", (await currentUser()) === null);
+    await as("mei"); ok("own password change", await changePassword("", "brandnew99"));
+    check("own password change keeps you signed in", (await currentUser())?.email === "mei@team.local");
+
+    // login lockout
+    check("unknown email: generic error", (await signIn("nobody@team.local", "x")) === "Wrong email or password");
+    for (let i = 0; i < 4; i++) await signIn("mei@team.local", "wrong");
+    check("5th wrong password locks the account", /Too many attempts/.test(await signIn("mei@team.local", "wrong")));
+    check("locked account refuses the right password", /Too many attempts/.test(await signIn("mei@team.local", "brandnew99")));
+    await as("admin"); await saveUser({ ...(await U("mei@team.local")), password: "unlock1234" });
+    check("admin password reset unlocks", (await signIn("mei@team.local", "unlock1234")) === "ok");
+    for (let i = 0; i < 3; i++) await signIn("hr@team.local", "wrong");
+    await signIn("hr@team.local", "password");
+    check("successful sign-in clears the failure count", (await U("hr@team.local")).failedLogins === 0);
+
+    // request privacy
+    await as("mei");
+    const r = await leave("extended", ["2026-12-01"], { note: "family medical reason" });
+    check("owner sees own request detail", (await getRequestDetail(id(r), await U("mei@team.local")))?.note === "family medical reason");
+    check("another employee can't open it", (await getRequestDetail(id(r), await U("diego@team.local"))) === null);
+    check("HR can open it", (await getRequestDetail(id(r), await U("hr@team.local"))) !== null);
+
+    check("robots.txt blocks every crawler", JSON.stringify(robots()) === JSON.stringify({ rules: { userAgent: "*", disallow: "/" } }));
   });
 
   // ---------- report ----------

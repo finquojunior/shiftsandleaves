@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { hashPassword, requireUser, verifyPassword } from "@/lib/auth";
+import { hashPassword, requireUser, setSession, verifyPassword } from "@/lib/auth";
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -29,7 +29,9 @@ export async function changePassword(current: string, next: string): Promise<Res
   const me = await requireUser();
   if (next.length < 8) return { ok: false, error: "New password needs at least 8 characters" };
   if (!me.mustChangePassword && !verifyPassword(current, me.passwordHash)) return { ok: false, error: "Current password is wrong" };
-  await db.update(schema.users).set({ passwordHash: hashPassword(next), mustChangePassword: false }).where(eq(schema.users.id, me.id));
+  const passwordHash = hashPassword(next);
+  await db.update(schema.users).set({ passwordHash, mustChangePassword: false }).where(eq(schema.users.id, me.id));
+  await setSession({ id: me.id, passwordHash }); // the new hash ends every other session; keep this one
   revalidatePath("/", "layout");
   return { ok: true };
 }

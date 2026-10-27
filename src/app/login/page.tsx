@@ -22,7 +22,7 @@ export default function LoginPage() {
         <form action={action} className="grid gap-4">
           <div className="grid gap-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required autoComplete="email" placeholder="you@team.local" />
+            <Input id="email" name="email" type="email" required autoComplete="email" placeholder="you@company.com" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="password">Password</Label>
@@ -31,9 +31,11 @@ export default function LoginPage() {
           {state?.error && <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-sm text-destructive">{state.error}</motion.p>}
           <Button type="submit" disabled={pending} className="mt-1">{pending ? "Signing in…" : "Sign in"}</Button>
         </form>
-        <p className="mt-6 text-xs text-muted-foreground leading-relaxed">
-          Demo accounts: <code>admin@team.local</code>, <code>hr@team.local</code>, <code>mei@team.local</code> … password <code>password</code>
-        </p>
+        {process.env.NODE_ENV !== "production" && (
+          <p className="mt-6 text-xs text-muted-foreground leading-relaxed">
+            Demo accounts: <code>admin@team.local</code>, <code>hr@team.local</code>, <code>mei@team.local</code> … password <code>password</code>
+          </p>
+        )}
       </motion.div>
     </main>
   );

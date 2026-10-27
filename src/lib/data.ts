@@ -128,9 +128,10 @@ export async function coverageFor(user: { id: number; departmentId: number | nul
   });
 }
 
-export async function getRequestDetail(id: number) {
+/** notes, exception reasons and HR conversations are private: the owner, HR and admins only */
+export async function getRequestDetail(id: number, viewer: Pick<User, "id" | "role">) {
   const r = await db.query.requests.findFirst({ where: eq(schema.requests.id, id) });
-  if (!r) return null;
+  if (!r || (r.userId !== viewer.id && viewer.role === "employee")) return null;
   const [days, evs, owner, replaces] = await Promise.all([
     db.select().from(schema.requestDays).where(eq(schema.requestDays.requestId, id)).orderBy(schema.requestDays.date),
     db

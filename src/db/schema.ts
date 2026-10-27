@@ -36,6 +36,8 @@ export const users = pgTable("users", {
   joinedOn: text("joined_on"), // null = unknown (pre-dates the system)
   leftOn: text("left_on"), // set = former member; kept on file, cannot sign in
   mustChangePassword: boolean("must_change_password").notNull().default(false),
+  failedLogins: integer("failed_logins").notNull().default(0), // wrong passwords in a row; 5 locks the account
+  lockedUntil: text("locked_until"), // ISO instant; sign-in refused until then
 }, (t) => [index("users_department_idx").on(t.departmentId)]).enableRLS();
 
 export type RequestKind = "leave" | "hours" | "schedule" | "reopen" | "wfh"; // wfh: working as usual, from home (in-office people only)

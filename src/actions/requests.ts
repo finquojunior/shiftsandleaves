@@ -333,7 +333,7 @@ export async function cancelRequest(requestId: number, reason?: string): Promise
     : [[], []];
   await db.transaction(async (tx) => {
     await closeRequest(tx, requestId, me, reason);
-    if (wasApproved) await notify(tx, others.filter((u) => u.id !== me.id).map((u) => u.id), `${me.name} cancelled a ${r.kind}`, days.map((d) => fmtDate(d.date)).join(", "), `/requests?open=${requestId}`);
+    if (wasApproved) await notify(tx, others.filter((u) => u.id !== me.id).map((u) => u.id), `${me.name} cancelled a ${r.kind}`, days.map((d) => fmtDate(d.date)).join(", "), `/?date=${days[0]?.date ?? todayIn(me.timezone)}&view=day`);
   });
   return done(requestId);
 }

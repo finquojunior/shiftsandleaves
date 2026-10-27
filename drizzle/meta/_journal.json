@@ -8,6 +8,13 @@
       "when": 1793080755880,
       "tag": "0000_condemned_doctor_faustus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793086175125,
+      "tag": "0001_jittery_franklin_storm",
+      "breakpoints": true
     }
   ]
 }

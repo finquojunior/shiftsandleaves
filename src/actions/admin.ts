@@ -49,7 +49,7 @@ export async function saveUser(input: {
   if (clash && clash.id !== id) return fail(`That email is already used by ${clash.name}`);
   const active = true; // former status comes from leftOn via isCurrent, so a notice period keeps access. Bug #3
   if (id) {
-    await db.update(schema.users).set({ ...rest, email, active, ...(password ? { passwordHash: hashPassword(password), mustChangePassword: true } : {}) }).where(eq(schema.users.id, id));
+    await db.update(schema.users).set({ ...rest, email, active, ...(password ? { passwordHash: hashPassword(password), mustChangePassword: true, failedLogins: 0, lockedUntil: null } : {}) }).where(eq(schema.users.id, id));
   } else {
     if (!password) return fail("Temporary password required for a new member");
     await db.insert(schema.users).values({ ...rest, email, active, passwordHash: hashPassword(password), mustChangePassword: true });

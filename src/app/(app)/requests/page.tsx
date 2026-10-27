@@ -6,7 +6,7 @@ export default async function RequestsPage({ searchParams }: PageProps<"/request
   const sp = await searchParams;
   const me = await requireUser();
   const openId = typeof sp.open === "string" ? Number(sp.open) : null;
-  const [{ mine, inbox, days }, users, festive, detail] = await Promise.all([getRequestsFor(me), getAllUsers(), getFestiveDays(), openId ? getRequestDetail(openId) : null]);
+  const [{ mine, inbox, days }, users, festive, detail] = await Promise.all([getRequestsFor(me), getAllUsers(), getFestiveDays(), openId ? getRequestDetail(openId, me) : null]);
   return (
     <RequestsView
       me={{ id: me.id, role: me.role, timezone: me.timezone, schedule: me.schedule, remote: me.remote }}

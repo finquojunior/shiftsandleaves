@@ -7,7 +7,11 @@ import "./globals.css";
 const geistSans = Geist({ variable: "--font-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
-export const metadata: Metadata = { title: "Shift & Leave", description: "Team hours and leave calendar" };
+export const metadata: Metadata = {
+  title: "Shift & Leave",
+  description: "Team hours and leave calendar",
+  robots: { index: false, follow: false, nocache: true, googleBot: { index: false, follow: false, noimageindex: true } },
+};
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
