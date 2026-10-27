@@ -18,6 +18,8 @@ import { cancelRequest, decide, logDiscussion, markNotificationRead, markNotific
 import { addFestiveDay, saveDepartment, saveSetting, saveUser } from "@/actions/admin";
 import { changePassword, saveAvatar, updateTimezone } from "@/actions/profile";
 import { GET as avatarGET } from "@/app/avatar/[id]/route";
+import { passkeyLogin, passkeyLoginOptions, passkeyRegister, passkeyRegisterOptions, removePasskey } from "@/actions/passkeys";
+import { createHash, generateKeyPairSync, randomBytes, sign as ecSign } from "node:crypto";
 
 // ---------- tiny harness ----------
 type Outcome = { group: string; name: string; ok: boolean; detail?: string };
@@ -500,6 +502,89 @@ async function main() {
     check("HR can open it", (await getRequestDetail(id(r), await U("hr@team.local"))) !== null);
 
     check("robots.txt blocks every crawler", JSON.stringify(robots()) === JSON.stringify({ rules: { userAgent: "*", disallow: "/" } }));
+  });
+
+  await G("20 Passkeys", async () => {
+    // software authenticator: an ES256 key and just enough CBOR to build what a phone or laptop would send
+    const cbor = (v: unknown): Buffer => {
+      const head = (major: number, n: number) => (n < 24 ? Buffer.from([(major << 5) | n]) : n < 256 ? Buffer.from([(major << 5) | 24, n]) : Buffer.from([(major << 5) | 25, n >> 8, n & 255]));
+      if (typeof v === "number") return v >= 0 ? head(0, v) : head(1, -1 - v);
+      if (typeof v === "string") return Buffer.concat([head(3, Buffer.byteLength(v)), Buffer.from(v)]);
+      if (Buffer.isBuffer(v)) return Buffer.concat([head(2, v.length), v]);
+      const m = v as Map<unknown, unknown>;
+      return Buffer.concat([head(5, m.size), ...[...m].flatMap(([k, x]) => [cbor(k), cbor(x)])]);
+    };
+    const b64 = (b: Buffer) => b.toString("base64url");
+    const sha = (b: Buffer | string) => createHash("sha256").update(b).digest();
+    const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "P-256" });
+    const jwk = publicKey.export({ format: "jwk" });
+    const credId = randomBytes(16);
+    const rpHash = sha("localhost");
+    const client = (type: string, challenge: string) => Buffer.from(JSON.stringify({ type, challenge, origin: "http://localhost:3000", crossOrigin: false }));
+    const register = async () => {
+      const opts = (await passkeyRegisterOptions())!;
+      const cose = cbor(new Map<number, unknown>([[1, 2], [3, -7], [-1, 1], [-2, Buffer.from(jwk.x!, "base64url")], [-3, Buffer.from(jwk.y!, "base64url")]]));
+      const authData = Buffer.concat([rpHash, Buffer.from([0x45]), Buffer.alloc(4), Buffer.alloc(16), Buffer.from([0, credId.length]), credId, cose]);
+      const attestationObject = cbor(new Map<string, unknown>([["fmt", "none"], ["attStmt", new Map()], ["authData", authData]]));
+      return passkeyRegister({ id: b64(credId), rawId: b64(credId), type: "public-key", clientExtensionResults: {}, response: { clientDataJSON: b64(client("webauthn.create", opts.challenge)), attestationObject: b64(attestationObject), transports: ["internal"] } });
+    };
+    let count = 0;
+    const assertion = (challenge: string, key = privateKey) => {
+      const authenticatorData = Buffer.concat([rpHash, Buffer.from([0x05]), Buffer.from([0, 0, 0, ++count])]);
+      const cd = client("webauthn.get", challenge);
+      const signature = ecSign("sha256", Buffer.concat([authenticatorData, sha(cd)]), key);
+      return { id: b64(credId), rawId: b64(credId), type: "public-key" as const, clientExtensionResults: {}, response: { clientDataJSON: b64(cd), authenticatorData: b64(authenticatorData), signature: b64(signature) } };
+    };
+    const signInPk = async (make = assertion) => {
+      const opts = await passkeyLoginOptions();
+      if (!opts) return "off";
+      try { return (await passkeyLogin(make(opts.challenge))).error; } catch (e) { return String(e).includes("redirect") ? "ok" : String(e); }
+    };
+
+    await as("mei");
+    check("off by default: no registration options", (await passkeyRegisterOptions()) === null);
+    check("off by default: no sign-in options", (await passkeyLoginOptions()) === null);
+    await as("mei");
+    await throws("employee can't turn passkeys on", () => saveSetting("passkeys", 1));
+    await as("admin");
+    ok("admin turns passkeys on", await saveSetting("passkeys", 1));
+
+    await as("mei");
+    ok("register a passkey", await register());
+    const pk = await db.query.passkeys.findFirst({ where: eq(schema.passkeys.credentialId, b64(credId)) });
+    check("stored against the right person", pk?.userId === (await U("mei@team.local")).id);
+    await cookies().then((c) => c.delete("session"));
+    check("sign in with it", (await signInPk()) === "ok");
+    check("session belongs to the passkey owner", (await currentUser())?.email === "mei@team.local");
+    check("counter and last-used recorded", (await db.query.passkeys.findFirst({ where: eq(schema.passkeys.id, pk!.id) }))?.lastUsedAt != null);
+    check("someone else's key is rejected", (await signInPk((c) => assertion(c, generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey))) === "Couldn't verify that passkey");
+    check("a reused challenge is rejected", await (async () => {
+      const opts = (await passkeyLoginOptions())!;
+      await passkeyLogin(assertion(opts.challenge)).catch(() => {});
+      return (await passkeyLogin(assertion(opts.challenge)).catch(() => ({ error: "redirected" }))).error === "That took too long. Try again.";
+    })());
+
+    const wrong = new FormData(); wrong.set("email", "mei@team.local"); wrong.set("password", "wrong");
+    for (let i = 0; i < 5; i++) await login(null, wrong);
+    check("password lockout doesn't block the passkey", (await signInPk()) === "ok");
+    check("and the passkey clears the lockout", (await U("mei@team.local")).lockedUntil === null);
+
+    await as("diego");
+    await removePasskey(pk!.id);
+    check("can't remove someone else's passkey", (await db.query.passkeys.findMany({ where: eq(schema.passkeys.id, pk!.id) })).length === 1);
+
+    await as("admin");
+    ok("admin turns passkeys off", await saveSetting("passkeys", 0));
+    check("off: sign-in blocked", (await signInPk()) === "off");
+    await as("mei");
+    check("off: registration blocked", (await passkeyRegisterOptions()) === null);
+    await as("admin");
+    await saveSetting("passkeys", 1);
+    check("on again: saved passkey still works", (await signInPk()) === "ok");
+
+    await as("admin"); await saveUser({ ...(await U("mei@team.local")), password: "reset12345" });
+    check("admin password reset removes the person's passkeys", (await db.query.passkeys.findMany({ where: eq(schema.passkeys.userId, (await U("mei@team.local")).id) })).length === 0);
+    check("removed passkey can't sign in", (await signInPk()) === "This passkey isn't registered here");
   });
 
   // ---------- report ----------

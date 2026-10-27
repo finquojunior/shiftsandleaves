@@ -1,4 +1,4 @@
-import { pgTable, text, integer, doublePrecision, boolean, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, bigint, doublePrecision, boolean, jsonb, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Postgres (Supabase in production, PGlite locally). Dates stay ISO text so string comparisons in the app keep working.
@@ -98,6 +98,19 @@ export const festiveDays = pgTable("festive_days", {
   date: text("date").notNull().unique(),
   name: text("name").notNull(),
 }).enableRLS();
+
+// WebAuthn credentials. Sign-in with these is allowed only while the "passkeys" setting is 1.
+export const passkeys = pgTable("passkeys", {
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  credentialId: text("credential_id").notNull().unique(), // base64url
+  publicKey: text("public_key").notNull(), // base64url COSE key
+  counter: bigint("counter", { mode: "number" }).notNull().default(0),
+  transports: jsonb("transports").$type<string[]>(),
+  backedUp: boolean("backed_up").notNull().default(false), // synced passkey (iCloud, Google...) vs one device
+  createdAt: text("created_at").notNull().default(now),
+  lastUsedAt: text("last_used_at"),
+}, (t) => [index("passkeys_user_idx").on(t.userId)]).enableRLS();
 
 export const settings = pgTable("settings", {
   key: text("key").primaryKey(),

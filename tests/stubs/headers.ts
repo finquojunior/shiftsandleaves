@@ -6,3 +6,6 @@ export async function cookies() {
     delete: (k: string) => void jar.delete(k),
   };
 }
+export async function headers() {
+  return new Headers({ host: "localhost:3000" });
+}

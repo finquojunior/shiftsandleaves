@@ -1,14 +1,19 @@
 "use client";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Camera, Globe, KeyRound, Trash2 } from "lucide-react";
+import { Camera, Fingerprint, Globe, KeyRound, Trash2 } from "lucide-react";
+import { startRegistration } from "@simplewebauthn/browser";
 import { changePassword, saveAvatar, updateTimezone } from "@/actions/profile";
+import { passkeyRegister, passkeyRegisterOptions, removePasskey } from "@/actions/passkeys";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { fmtDate } from "@/lib/time";
 import { UserAvatar, type AvatarUser } from "./user-avatar";
+
+export type PasskeyRow = { id: number; backedUp: boolean; createdAt: string; lastUsedAt: string | null };
 
 /** resize to a 192px square JPEG in the browser so the DB stays small */
 function toSquareJpeg(file: File): Promise<string> {
@@ -43,7 +48,7 @@ const tzOffset = (tz: string) => {
 };
 
 export function ProfileDialog({ user, open, section = "photo", onClose }: {
-  user: AvatarUser & { email?: string; timezone: string; mustChangePassword?: boolean }; open: boolean; section?: "photo" | "password"; onClose: () => void;
+  user: AvatarUser & { email?: string; timezone: string; mustChangePassword?: boolean; passkeys?: PasskeyRow[] | null }; open: boolean; section?: "photo" | "password"; onClose: () => void;
 }) {
   const [preview, setPreview] = useState<string | null | undefined>(undefined); // undefined = unchanged
   const [tz, setTz] = useState(user.timezone);
@@ -57,6 +62,14 @@ export function ProfileDialog({ user, open, section = "photo", onClose }: {
 
   const savePhoto = () => start(async () => { const r = await saveAvatar(preview ?? null); if (r.ok) { toast.success("Photo updated"); setPreview(undefined); } else toast.error(r.error); });
   const saveTz = () => start(async () => { const r = await updateTimezone(tz); if (r.ok) toast.success(`Timezone set to ${tz}`); else toast.error(r.error); });
+  const addPasskey = () => start(async () => {
+    const optionsJSON = await passkeyRegisterOptions();
+    if (!optionsJSON) return void toast.error("Passkeys are turned off");
+    let response;
+    try { response = await startRegistration({ optionsJSON }); } catch { return; } // cancelled, or this device already has one
+    const r = await passkeyRegister(response);
+    if (r.ok) toast.success("Passkey added. You can sign in with it now."); else toast.error(r.error);
+  });
   const savePw = () => {
     if (pw.next !== pw.confirm) return toast.error("Passwords don't match");
     start(async () => { const r = await changePassword(pw.current, pw.next); if (r.ok) { toast.success("Password changed"); setPw({ current: "", next: "", confirm: "" }); if (forced) onClose(); } else toast.error(r.error); });
@@ -67,7 +80,7 @@ export function ProfileDialog({ user, open, section = "photo", onClose }: {
       <DialogContent className="sm:max-w-md" showCloseButton={!forced} initialFocus={section === "password" ? pwRef : undefined}>
         <DialogHeader>
           <DialogTitle>Profile &amp; settings</DialogTitle>
-          <DialogDescription>{forced ? "Set your own password to continue." : "Photo, timezone and password."}</DialogDescription>
+          <DialogDescription>{forced ? "Set your own password to continue." : `Photo, timezone${user.passkeys ? ", passkeys" : ""} and password.`}</DialogDescription>
         </DialogHeader>
 
         {!forced && (
@@ -104,6 +117,29 @@ export function ProfileDialog({ user, open, section = "photo", onClose }: {
             </div>
 
             <Separator />
+
+            {user.passkeys && (
+              <>
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="flex items-center gap-1.5"><Fingerprint className="size-3.5" /> Passkeys</Label>
+                    <Button size="sm" variant="secondary" disabled={pending} onClick={addPasskey}>Add passkey</Button>
+                  </div>
+                  <ul className="grid gap-1">
+                    {user.passkeys.map((p) => (
+                      <li key={p.id} className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm">
+                        <span className="flex-1">{p.backedUp ? "Synced passkey" : "Device passkey"} · added {fmtDate(p.createdAt, "d MMM yyyy")}</span>
+                        <span className="text-xs text-muted-foreground">{p.lastUsedAt ? `used ${fmtDate(p.lastUsedAt, "d MMM")}` : "not used yet"}</span>
+                        <Button size="icon-sm" variant="ghost" aria-label="Remove passkey" disabled={pending} onClick={() => start(async () => { await removePasskey(p.id); toast.success("Passkey removed"); })}><Trash2 className="size-3.5" /></Button>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-muted-foreground">{user.passkeys.length ? "Sign in with Face ID, Touch ID, Windows Hello or your phone instead of a password." : "None yet. Add one to sign in with Face ID, Touch ID, Windows Hello or your phone."}</p>
+                </div>
+
+                <Separator />
+              </>
+            )}
           </>
         )}
 

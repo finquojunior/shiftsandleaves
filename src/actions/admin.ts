@@ -50,6 +50,8 @@ export async function saveUser(input: {
   const active = true; // former status comes from leftOn via isCurrent, so a notice period keeps access. Bug #3
   if (id) {
     await db.update(schema.users).set({ ...rest, email, active, ...(password ? { passwordHash: hashPassword(password), mustChangePassword: true, failedLogins: 0, lockedUntil: null } : {}) }).where(eq(schema.users.id, id));
+    // a reset means the account may be in the wrong hands: passkeys go too, the person adds fresh ones after signing in
+    if (password) await db.delete(schema.passkeys).where(eq(schema.passkeys.userId, id));
   } else {
     if (!password) return fail("Temporary password required for a new member");
     await db.insert(schema.users).values({ ...rest, email, active, passwordHash: hashPassword(password), mustChangePassword: true });

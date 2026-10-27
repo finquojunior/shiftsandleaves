@@ -2,12 +2,13 @@
 import { useState, useTransition } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
-import { PartyPopper, Trash2 } from "lucide-react";
+import { Fingerprint, PartyPopper, Trash2 } from "lucide-react";
 import { addFestiveDay, removeFestiveDay, saveSetting } from "@/actions/admin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { fmtDate } from "@/lib/time";
 
 const FIELDS = [
@@ -38,6 +39,16 @@ export function SettingsView({ settings, festive }: { settings: Record<string, n
               <p className="text-xs text-muted-foreground">{f.help}</p>
             </div>
           ))}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Fingerprint className="size-4" /> Sign-in</CardTitle><CardDescription>Applies to everyone in the team.</CardDescription></CardHeader>
+        <CardContent className="flex items-start justify-between gap-4">
+          <div className="grid gap-1">
+            <Label htmlFor="passkeys">Passkeys</Label>
+            <p className="text-xs text-muted-foreground">Let people add a passkey in their profile and sign in with Face ID, Touch ID, Windows Hello or their phone. Passwords keep working. Turning this off hides the option and blocks passkey sign-in; saved passkeys come back if you turn it on again.</p>
+          </div>
+          <Switch id="passkeys" checked={settings.passkeys === 1} disabled={pending} onCheckedChange={(on) => start(async () => { const r = await saveSetting("passkeys", on ? 1 : 0); if (r.ok) toast.success(on ? "Passkeys on" : "Passkeys off"); else toast.error(r.error); })} />
         </CardContent>
       </Card>
       <Card>

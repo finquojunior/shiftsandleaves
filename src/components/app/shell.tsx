@@ -9,11 +9,11 @@ import { logout } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "./notification-bell";
-import { ProfileDialog } from "./profile-dialog";
+import { ProfileDialog, type PasskeyRow } from "./profile-dialog";
 import { UserAvatar } from "./user-avatar";
 import { cn } from "@/lib/utils";
 
-export type ShellUser = { id: number; name: string; email: string; role: Role; color: string; timezone: string; avatar: string | null; mustChangePassword: boolean };
+export type ShellUser = { id: number; name: string; email: string; role: Role; color: string; timezone: string; avatar: string | null; mustChangePassword: boolean; passkeys: PasskeyRow[] | null };
 
 export { initials } from "./user-avatar";
 

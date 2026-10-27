@@ -49,7 +49,7 @@ export const todayUtc = () => new Date().toISOString().slice(0, 10);
 export const isCurrent = (u: { active: boolean; leftOn: string | null }, today = todayUtc()) => u.active && (!u.leftOn || today <= u.leftOn);
 
 /** settings bounds. Bug #9 */
-export const SETTING_RANGE: Record<string, [number, number]> = { deadline_day: [1, 31], casual_quota: [0, 31], festive_quota: [0, 366], late_hours: [0, 720] };
+export const SETTING_RANGE: Record<string, [number, number]> = { deadline_day: [1, 31], casual_quota: [0, 31], festive_quota: [0, 366], late_hours: [0, 720], passkeys: [0, 1] };
 
 /** employed on this date? */
 export const employedOn = (u: { joinedOn: string | null; leftOn: string | null }, date: string) =>

@@ -25,11 +25,12 @@ let dummy: string | undefined;
 /** same work as a real check, for unknown emails: response time doesn't reveal who has an account */
 export const burnPasswordCheck = (pw: string) => verifyPassword(pw, (dummy ??= hashPassword("not-a-real-account")));
 
-const sign = (id: number, exp: number, passwordHash: string) => {
+export const mac = (data: string) => {
   if (!SECRET) throw new Error("SESSION_SECRET is not set");
-  return createHmac("sha256", SECRET).update(`${id}.${exp}.${passwordHash}`).digest("hex");
+  return createHmac("sha256", SECRET).update(data).digest("hex");
 };
-const sameHex = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
+const sign = (id: number, exp: number, passwordHash: string) => mac(`${id}.${exp}.${passwordHash}`);
+export const sameHex = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 export async function setSession(user: Pick<User, "id" | "passwordHash">) {
   const exp = Date.now() + MAX_AGE_DAYS * 86400_000;

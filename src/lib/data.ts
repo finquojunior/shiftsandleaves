@@ -155,4 +155,11 @@ export async function getRequestDetail(id: number, viewer: Pick<User, "id" | "ro
 export const getNotifications = (userId: number) =>
   db.query.notifications.findMany({ where: eq(schema.notifications.userId, userId), orderBy: desc(schema.notifications.createdAt), limit: 30 });
 
+/** for the profile dialog: no key material */
+export const getPasskeys = (userId: number) =>
+  db.query.passkeys.findMany({
+    columns: { id: true, backedUp: true, createdAt: true, lastUsedAt: true },
+    where: eq(schema.passkeys.userId, userId), orderBy: schema.passkeys.createdAt,
+  });
+
 export const getFestiveDays = () => db.select().from(schema.festiveDays).orderBy(schema.festiveDays.date);
