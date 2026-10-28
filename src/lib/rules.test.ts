@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { validateDay, applyHalf, employedOn, isCurrent, weeksWithoutLeave, planWindowOpen, approverRole } from "./rules";
-import { shiftInstants } from "./time";
+import { dateRange, shiftInstants } from "./time";
 
 assert.equal(validateDay([{ start: 540, end: 1020 }], false), null);
 assert.match(validateDay([{ start: 540, end: 900 }], false)!, /8 hours/);
@@ -30,4 +30,6 @@ assert.equal(end.toISOString(), "2026-11-02T00:30:00.000Z");
 assert.equal(isCurrent({ active: true, leftOn: "2026-12-31" }, "2026-10-26"), true); // notice period
 assert.equal(isCurrent({ active: true, leftOn: "2026-10-25" }, "2026-10-26"), false);
 assert.equal(isCurrent({ active: false, leftOn: null }, "2026-10-26"), false);
+assert.deepEqual(dateRange("2026-02-27", "2026-03-02"), ["2026-02-27", "2026-02-28", "2026-03-01", "2026-03-02"]);
+assert.deepEqual(dateRange("2026-03-02", "2026-03-01"), []);
 console.log("rules ok");

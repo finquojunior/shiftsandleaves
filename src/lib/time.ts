@@ -34,3 +34,10 @@ export function monthDates(month: string) {
   const n = new Date(y, m, 0).getDate();
   return Array.from({ length: n }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
 }
+
+/** every date from..to inclusive (YYYY-MM-DD); empty if to < from */
+export function dateRange(from: string, to: string) {
+  const out: string[] = [];
+  for (let t = Date.parse(`${from}T00:00:00Z`), end = Date.parse(`${to}T00:00:00Z`); t <= end; t += 86400_000) out.push(new Date(t).toISOString().slice(0, 10));
+  return out;
+}

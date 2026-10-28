@@ -95,6 +95,7 @@ export async function submitLeave(input: {
   const today = todayIn(me.timezone);
   const days = [...new Map(input.days.map((d) => [d.date, d])).values()].sort((a, b) => a.date.localeCompare(b.date));
   if (!days.length) return fail("Pick at least one day");
+  if (days.length > 366) return fail("That's more than a year of leave; split it into separate requests");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(days[0].date)) return fail("Bad date");
 
   if (input.leaveType === "extended") {

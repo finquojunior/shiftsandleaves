@@ -14,7 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { hhmm, parseHHMM, fmtDate } from "@/lib/time";
+import { Badge } from "@/components/ui/badge";
+import { dateRange, hhmm, parseHHMM, fmtDate } from "@/lib/time";
 import { totalMinutes } from "@/lib/rules";
 
 type Kind = "leave" | "plan" | "hours" | "schedule" | "reopen" | "wfh" | null;
@@ -57,26 +58,78 @@ function useSubmit(onDone: () => void, onFail?: (r: Extract<Result, { ok: false 
 }
 
 type Day = { date: string; half: "am" | "pm" | null };
+type Range = { from: string; to: string };
+const rangeDays = (r: Range): Day[] => dateRange(r.from, r.to).map((date) => ({ date, half: null }));
+
+/** an edited request's runs of 2+ consecutive full days show as ranges, the rest as single days */
+function splitInitial(days: Day[]) {
+  const singles: Day[] = [], ranges: Range[] = [];
+  let run: Day[] = [];
+  const flush = () => { if (run.length > 1) ranges.push({ from: run[0].date, to: run[run.length - 1].date }); else singles.push(...run); run = []; };
+  for (const d of [...days].sort((a, b) => a.date.localeCompare(b.date))) {
+    if (d.half) { flush(); singles.push(d); continue; }
+    const prev = run[run.length - 1];
+    if (prev && dateRange(prev.date, d.date).length !== 2) flush();
+    run.push(d);
+  }
+  flush();
+  return { singles, ranges };
+}
 
 export function LeaveDialog({ open, onClose, festive, defaultDate, plan, replaceId, initial }: {
   open: boolean; onClose: () => void; festive: { date: string; name: string }[]; defaultDate?: string; plan?: boolean; replaceId?: number | null;
   initial?: { leaveType: LeaveType; days: Day[]; note?: string | null; planMonth?: string | null };
 }) {
+  const [init] = useState(() => (initial ? splitInitial(initial.days) : { singles: defaultDate ? [{ date: defaultDate, half: null }] : [], ranges: [] }));
   const [type, setType] = useState<LeaveType>(initial?.leaveType ?? "casual");
-  const [days, setDays] = useState<Day[]>(initial?.days ?? (defaultDate ? [{ date: defaultDate, half: null }] : []));
+  const [days, setDays] = useState<Day[]>(init.singles);
+  const [ranges, setRanges] = useState<Range[]>(init.ranges);
   const [pick, setPick] = useState(defaultDate ?? "");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [month, setMonth] = useState(initial?.planMonth ?? (defaultDate ?? new Date().toISOString().slice(0, 10)).slice(0, 7));
   const [note, setNote] = useState(initial?.note ?? "");
   const [breaches, setBreaches] = useState<Coverage[]>([]);
   const [reason, setReason] = useState("");
-  const { pending, run } = useSubmit(onClose, (r) => setBreaches(r.breaches ?? []));
+  const [pending, start] = useTransition();
 
+  const taken = (date: string) => days.some((d) => d.date === date) || ranges.some((r) => r.from <= date && date <= r.to);
   const add = (date: string) => {
-    if (!date || days.some((d) => d.date === date)) return;
+    if (!date || taken(date)) return;
     setDays([...days, { date, half: null }].sort((a, b) => a.date.localeCompare(b.date)));
     setBreaches([]);
   };
-  const total = days.reduce((a, d) => a + (d.half ? 0.5 : 1), 0);
+  const addRange = () => {
+    const ds = dateRange(from, to);
+    if (ds.length < 2) return toast.error("Pick a start and a later end date");
+    if (ds.length > 366) return toast.error("A range can be at most a year");
+    if (ds.some(taken)) return toast.error("That range overlaps days you've already added");
+    setRanges([...ranges, { from, to }].sort((a, b) => a.from.localeCompare(b.from)));
+    setFrom(""); setTo(""); setBreaches([]);
+  };
+  const total = days.reduce((a, d) => a + (d.half ? 0.5 : 1), 0) + ranges.reduce((a, r) => a + dateRange(r.from, r.to).length, 0);
+  const lo = plan ? `${month}-01` : undefined, hi = plan ? `${month}-31` : undefined;
+
+  // each range is its own request; single days go together in one. A monthly plan or an edit stays one request.
+  const submit = (exceptionReason?: string) => start(async () => {
+    const parts: { range?: Range; days: Day[] }[] = plan || replaceId
+      ? [{ days: [...days, ...ranges.flatMap(rangeDays)] }]
+      : [...(days.length ? [{ days }] : []), ...ranges.map((r) => ({ range: r, days: rangeDays(r) }))];
+    const sent: typeof parts = [];
+    for (const p of parts) {
+      const r = await submitLeave({ leaveType: type, days: p.days, note, planMonth: plan ? month : initial?.planMonth ?? null, replaceId, exceptionReason });
+      if (!r.ok) {
+        // drop what already went through so a retry only sends the rest
+        if (sent.some((s) => !s.range)) setDays([]);
+        setRanges(ranges.filter((x) => !sent.some((s) => s.range === x)));
+        setBreaches(r.breaches ?? []);
+        return void toast.error(sent.length ? `${r.error} (${sent.length} of ${parts.length} already submitted)` : r.error);
+      }
+      sent.push(p);
+    }
+    toast.success(exceptionReason ? "Exception request submitted" : parts.length > 1 ? `${parts.length} leave requests submitted` : "Leave request submitted");
+    onClose();
+  });
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -104,8 +157,13 @@ export function LeaveDialog({ open, onClose, festive, defaultDate, plan, replace
           <div className="grid gap-1.5">
             <Label>Days</Label>
             <div className="flex gap-2">
-              <Input type="date" value={pick} min={plan ? `${month}-01` : undefined} max={plan ? `${month}-31` : undefined} onChange={(e) => setPick(e.target.value)} />
+              <Input type="date" value={pick} min={lo} max={hi} onChange={(e) => setPick(e.target.value)} />
               <Button type="button" variant="secondary" onClick={() => { add(pick); setPick(""); }}>Add</Button>
+            </div>
+            <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+              <div className="grid gap-1"><Label htmlFor="range-from" className="text-xs font-normal text-muted-foreground">From</Label><Input id="range-from" type="date" value={from} min={lo} max={hi} onChange={(e) => setFrom(e.target.value)} /></div>
+              <div className="grid gap-1"><Label htmlFor="range-to" className="text-xs font-normal text-muted-foreground">To</Label><Input id="range-to" type="date" value={to} min={from || lo} max={hi} onChange={(e) => setTo(e.target.value)} /></div>
+              <Button type="button" variant="secondary" onClick={addRange}>Add range</Button>
             </div>
             {type === "festive" && (
               <div className="grid gap-1.5 rounded-lg bg-muted p-2.5 text-xs text-muted-foreground">
@@ -131,9 +189,19 @@ export function LeaveDialog({ open, onClose, festive, defaultDate, plan, replace
                     </div>
                   </motion.li>
                 ))}
+                {ranges.map((r) => (
+                  <motion.li key={r.from} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <div className="flex items-center gap-2 rounded-lg border px-2 py-1.5 text-sm">
+                      <CalendarRange className="size-3.5 text-muted-foreground" />
+                      <span className="flex-1">{fmtDate(r.from, "EEE d MMM")} → {fmtDate(r.to, "EEE d MMM yyyy")}</span>
+                      <Badge variant="secondary">{dateRange(r.from, r.to).length} days</Badge>
+                      <Button type="button" size="icon-sm" variant="ghost" onClick={() => { setRanges(ranges.filter((x) => x !== r)); setBreaches([]); }} aria-label="Remove range"><Trash2 className="size-3.5" /></Button>
+                    </div>
+                  </motion.li>
+                ))}
               </AnimatePresence>
             </ul>
-            {days.length > 0 && <p className="text-xs text-muted-foreground">{total} day{total !== 1 && "s"} total</p>}
+            {total > 0 && <p className="text-xs text-muted-foreground">{total} day{total !== 1 && "s"} total{!plan && !replaceId && ranges.length > 0 && ` · each range goes in as its own request`}</p>}
           </div>
           {type === "extended" && (
             <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">Extended leave doesn&apos;t count against any quota. HR or an admin will get in touch to talk it through before deciding, so say what&apos;s going on and when you could meet.</p>
@@ -157,9 +225,9 @@ export function LeaveDialog({ open, onClose, festive, defaultDate, plan, replace
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           {breaches.length > 0 ? (
-            <Button variant="destructive" disabled={pending || !reason.trim()} onClick={() => run(submitLeave({ leaveType: type, days, note, planMonth: plan ? month : initial?.planMonth ?? null, replaceId, exceptionReason: reason }), "Exception request submitted")}>{pending ? "Submitting…" : "Submit as exception"}</Button>
+            <Button variant="destructive" disabled={pending || !reason.trim()} onClick={() => submit(reason)}>{pending ? "Submitting…" : "Submit as exception"}</Button>
           ) : (
-            <Button disabled={pending || days.length === 0} onClick={() => run(submitLeave({ leaveType: type, days, note, planMonth: plan ? month : initial?.planMonth ?? null, replaceId }), "Leave request submitted")}>{pending ? "Submitting…" : "Submit"}</Button>
+            <Button disabled={pending || total === 0} onClick={() => submit()}>{pending ? "Submitting…" : "Submit"}</Button>
           )}
         </DialogFooter>
       </DialogContent>

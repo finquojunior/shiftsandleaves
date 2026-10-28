@@ -15,6 +15,7 @@ import { avatarUrl, effectiveDay, getAllUsers, getDayRows, getRequestDetail, get
 import { analytics } from "@/lib/analytics";
 import { login } from "@/actions/auth";
 import { cancelRequest, decide, logDiscussion, markNotificationRead, markNotificationsRead, submitHours, submitLeave, submitReopen, submitSchedule, submitWfh, type Result } from "@/actions/requests";
+import { dateRange } from "@/lib/time";
 import { addFestiveDay, saveDepartment, saveSetting, saveUser } from "@/actions/admin";
 import { changePassword, saveAvatar, updateTimezone } from "@/actions/profile";
 import { GET as avatarGET } from "@/app/avatar/[id]/route";
@@ -137,6 +138,7 @@ async function main() {
   await G("05 Extended leave and HR conversation", async () => {
     await as("mei");
     fails("needs a reason", await leave("extended", ["2026-11-16"]), /Tell HR/);
+    fails("over a year in one request", await leave("extended", dateRange("2027-01-01", "2028-01-02"), { note: "x" }), /more than a year/);
     fails("not allowed in a monthly plan", await leave("extended", ["2026-11-16"], { note: "x", planMonth: "2026-11" }), /monthly plan/);
     const r = await leave("extended", ["2026-11-16", "2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20"], { note: "family" });
     ok("extended leave submitted", r);
