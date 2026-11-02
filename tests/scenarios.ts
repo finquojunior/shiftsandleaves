@@ -166,7 +166,7 @@ async function main() {
     fails("duplicate reopen blocked", await submitReopen("2026-10"), /pending/);
     await approve("hr", id(ro));
     await as("mei");
-    ok("plan accepted after reopen", await leave("casual", ["2026-10-06", "2026-10-13", "2026-10-20"], { planMonth: "2026-10" }));
+    ok("plan accepted after reopen", await leave("casual", ["2026-10-06", "2026-10-13", "2026-10-20", "2026-10-27"], { planMonth: "2026-10" }));
 
     // emergency change to an approved plan after the deadline (spec: allowed, goes to approval)
     const sara = await U("sara@team.local");

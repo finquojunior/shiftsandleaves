@@ -95,8 +95,8 @@ export function CalendarView({ me, users, depts, segments, festive, date, view }
   const today = formatInTimeZone(new Date(), tz, "yyyy-MM-dd");
 
   const range =
-    view === "month" ? { start: startOfWeek(startOfMonth(d), { weekStartsOn: 1 }), end: endOfWeek(endOfMonth(d), { weekStartsOn: 1 }) }
-    : view === "week" ? { start: startOfWeek(d, { weekStartsOn: 1 }), end: endOfWeek(d, { weekStartsOn: 1 }) }
+    view === "month" ? { start: startOfWeek(startOfMonth(d), { weekStartsOn: 0 }), end: endOfWeek(endOfMonth(d), { weekStartsOn: 0 }) }
+    : view === "week" ? { start: startOfWeek(d, { weekStartsOn: 0 }), end: endOfWeek(d, { weekStartsOn: 0 }) }
     : { start: d, end: d };
   const dayKey = `${format(range.start, "yyyy-MM-dd")}_${format(range.end, "yyyy-MM-dd")}`;
   // only people employed on at least one displayed day get a row
@@ -379,7 +379,7 @@ function MonthGrid({ days, month, today, tz, users, festiveMap, onOpen }: { days
   return (
     <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
       <div className="grid grid-cols-7 border-b bg-muted/40 text-center text-xs font-medium text-muted-foreground">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => <div key={w} className="py-2">{w}</div>)}
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w) => <div key={w} className="py-2">{w}</div>)}
       </div>
       <div className="grid grid-cols-7">
         {days.map((c, i) => {

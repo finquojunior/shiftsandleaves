@@ -158,7 +158,7 @@ function DetailSheet({ detail, onClose, me, user, festive }: { detail: Detail | 
           )}
           {detail.kind === "schedule" && detail.payload && (
             <div className="grid grid-cols-7 gap-1 text-center text-[11px]">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => { const sl = detail.payload![(i + 1) % 7]; return <div key={d} className="rounded-lg border p-1.5"><div className="text-muted-foreground">{d}</div>{sl.map((sh, j) => <div key={j} className="tabular-nums">{hhmm(sh.start)}–{hhmm(sh.end)}</div>)}</div>; })}
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => { const sl = detail.payload![i]; return <div key={d} className="rounded-lg border p-1.5"><div className="text-muted-foreground">{d}</div>{sl.map((sh, j) => <div key={j} className="tabular-nums">{hhmm(sh.start)}–{hhmm(sh.end)}</div>)}</div>; })}
             </div>
           )}
           {detail.leaveType === "extended" && (

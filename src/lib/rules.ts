@@ -57,11 +57,11 @@ export const employedOn = (u: { joinedOn: string | null; leftOn: string | null }
 
 export const dayWeight = (half: "am" | "pm" | null | undefined) => (half ? 0.5 : 1);
 
-/** Monday-start weeks that lie fully inside the month and have no leave day. */
+/** Sunday-start weeks that lie fully inside the month and have no leave day. */
 export function weeksWithoutLeave(month: string, leaveDates: Set<string>) {
   const dates = monthDates(month);
   const missing: string[] = [];
-  let ws = startOfWeek(parseISO(dates[0]), { weekStartsOn: 1 });
+  let ws = startOfWeek(parseISO(dates[0]), { weekStartsOn: 0 });
   const last = dates[dates.length - 1];
   while (format(ws, "yyyy-MM-dd") <= last) {
     const week = Array.from({ length: 7 }, (_, i) => format(addDays(ws, i), "yyyy-MM-dd"));

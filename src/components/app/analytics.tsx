@@ -228,7 +228,7 @@ function PersonMonths({ person, days, today }: { person: PersonStats; days: { da
   const m = months[Math.min(idx, months.length - 1)];
   if (!m) return null;
   const first = parseISO(`${m}-01`);
-  const cells = eachDayOfInterval({ start: startOfWeek(startOfMonth(first), { weekStartsOn: 1 }), end: endOfWeek(endOfMonth(first), { weekStartsOn: 1 }) });
+  const cells = eachDayOfInterval({ start: startOfWeek(startOfMonth(first), { weekStartsOn: 0 }), end: endOfWeek(endOfMonth(first), { weekStartsOn: 0 }) });
   const inMonthDays = days.filter((d) => d.date.startsWith(m));
   const count = (pred: (s: DayState) => boolean) => inMonthDays.filter((d) => d.state && pred(d.state)).length;
   const summary = [
@@ -266,7 +266,7 @@ function PersonMonths({ person, days, today }: { person: PersonStats; days: { da
         {summary.length === 0 && <span className="text-muted-foreground">Nothing out of the ordinary this month.</span>}
         {summary.map((x) => <span key={x.k} className={cn("rounded-md px-1.5 py-0.5", TONE[x.k].pill)}>{fmtN(x.v)} {COLS.find((c) => c.key === x.k)?.short.toLowerCase()}</span>)}
       </div>
-      <div className="grid grid-cols-7 border-b bg-muted/40 text-center text-[10px] text-muted-foreground">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => <div key={w} className="py-1">{w}</div>)}</div>
+      <div className="grid grid-cols-7 border-b bg-muted/40 text-center text-[10px] text-muted-foreground">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w) => <div key={w} className="py-1">{w}</div>)}</div>
       <div className="grid grid-cols-7">
         {cells.map((c) => {
           const ds = format(c, "yyyy-MM-dd");

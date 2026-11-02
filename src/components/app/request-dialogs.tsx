@@ -295,7 +295,7 @@ const sameDay = (a: Shift[], b: Shift[]) => JSON.stringify(a) === JSON.stringify
 export function ScheduleEditor({ value, onChange, allowSplit }: { value: DaySlots[]; onChange: (s: DaySlots[]) => void; allowSplit: boolean }) {
   const [same, setSame] = useState(value.every((d) => sameDay(d, value[0])));
   const setDay = (i: number, slots: Shift[]) => onChange(same ? value.map(() => slots) : value.map((d, j) => (j === i ? slots : d)));
-  const rows = same ? [1] : [1, 2, 3, 4, 5, 6, 0];
+  const rows = same ? [1] : [0, 1, 2, 3, 4, 5, 6];
   return (
     <div className="grid gap-3">
       <div className="flex items-center justify-between"><Label>Same hours every day</Label><Switch checked={same} onCheckedChange={(c) => { setSame(c); if (c) onChange(value.map(() => value[1])); }} /></div>

@@ -14,8 +14,8 @@ assert.equal(employedOn({ joinedOn: "2026-11-01", leftOn: null }, "2026-10-31"),
 assert.equal(employedOn({ joinedOn: null, leftOn: "2026-10-15" }, "2026-10-15"), true);
 assert.equal(employedOn({ joinedOn: null, leftOn: "2026-10-15" }, "2026-10-16"), false);
 
-// Nov 2026: full Mon-Sun weeks inside the month start on 2, 9, 16, 23
-assert.deepEqual(weeksWithoutLeave("2026-11", new Set(["2026-11-04", "2026-11-25"])), ["2026-11-09", "2026-11-16"]);
+// Nov 2026: full Sun-Sat weeks inside the month start on 1, 8, 15, 22
+assert.deepEqual(weeksWithoutLeave("2026-11", new Set(["2026-11-04", "2026-11-25"])), ["2026-11-08", "2026-11-15"]);
 
 assert.equal(planWindowOpen("2026-10-26", "2026-11", 5), true);
 assert.equal(planWindowOpen("2026-11-05", "2026-11", 5), true);
