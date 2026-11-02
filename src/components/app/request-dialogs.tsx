@@ -107,11 +107,22 @@ export function LeaveDialog({ open, onClose, festive, defaultDate, plan, replace
     setRanges([...ranges, { from, to }].sort((a, b) => a.from.localeCompare(b.from)));
     setFrom(""); setTo(""); setBreaches([]);
   };
-  const total = days.reduce((a, d) => a + (d.half ? 0.5 : 1), 0) + ranges.reduce((a, r) => a + dateRange(r.from, r.to).length, 0);
+  // dates typed in but not yet added with "Add"/"Add range" still count, so Submit works without the extra click
+  const draft = from && to && from <= to ? { from, to } : null;
+  const allRanges = draft ? [...ranges, draft] : ranges;
+  const allDays = pick && !taken(pick) ? [...days, { date: pick, half: null }].sort((a, b) => a.date.localeCompare(b.date)) : days;
+  const total = allDays.reduce((a, d) => a + (d.half ? 0.5 : 1), 0) + allRanges.reduce((a, r) => a + dateRange(r.from, r.to).length, 0);
   const lo = plan ? `${month}-01` : undefined, hi = plan ? `${month}-31` : undefined;
 
   // each range is its own request; single days go together in one. A monthly plan or an edit stays one request.
   const submit = (exceptionReason?: string) => start(async () => {
+    if (draft) {
+      const ds = dateRange(draft.from, draft.to);
+      if (ds.length > 366) return void toast.error("A range can be at most a year");
+      if (ds.some((d) => taken(d) || d === pick)) return void toast.error("That range overlaps days you've already added");
+    }
+    const days = allDays, ranges = allRanges;
+    setDays(days); setRanges(ranges); setPick(""); setFrom(""); setTo("");
     const parts: { range?: Range; days: Day[] }[] = plan || replaceId
       ? [{ days: [...days, ...ranges.flatMap(rangeDays)] }]
       : [...(days.length ? [{ days }] : []), ...ranges.map((r) => ({ range: r, days: rangeDays(r) }))];
