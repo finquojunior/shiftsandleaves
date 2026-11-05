@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { validateDay, applyHalf, employedOn, isCurrent, weeksWithoutLeave, planWindowOpen, approverRole } from "./rules";
+import { validateDay, applyHalf, employedOn, isCurrent, weeksWithoutLeave, planWindowOpen, canApprove } from "./rules";
 import { dateRange, shiftInstants } from "./time";
 
 assert.equal(validateDay([{ start: 540, end: 1020 }], false), null);
@@ -21,8 +21,9 @@ assert.equal(planWindowOpen("2026-10-26", "2026-11", 5), true);
 assert.equal(planWindowOpen("2026-11-05", "2026-11", 5), true);
 assert.equal(planWindowOpen("2026-11-06", "2026-11", 5), false);
 
-assert.equal(approverRole("employee"), "hr");
-assert.equal(approverRole("hr"), "admin");
+assert(canApprove("admin", "employee") && canApprove("admin", "hr") && canApprove("admin", "admin"));
+assert(canApprove("hr", "employee") && !canApprove("hr", "hr") && !canApprove("hr", "admin"));
+assert(!canApprove("employee", "employee"));
 
 const { start, end } = shiftInstants("2026-11-01", { start: 1320, end: 1800 }, "Asia/Kolkata");
 assert.equal(start.toISOString(), "2026-11-01T16:30:00.000Z");

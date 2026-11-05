@@ -5,7 +5,7 @@ import { db, noAvatar, schema, type Tx } from "@/db";
 import type { DaySlots, LeaveType, Request, Shift, User } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { coverageFor, getDayRows, getFestiveDays, getSettings, getUsers, type Coverage } from "@/lib/data";
-import { approverRole, canApprove, dayWeight, employedOn, isLate, planWindowOpen, sortSlots, validateDay, weeksWithoutLeave } from "@/lib/rules";
+import { canApprove, dayWeight, employedOn, isLate, planWindowOpen, sortSlots, validateDay, weeksWithoutLeave } from "@/lib/rules";
 import { fmtDate, hhmm, monthOf, shiftInstants, todayIn } from "@/lib/time";
 
 // Each action reads everything it needs up front (in parallel), then writes in one transaction:
@@ -23,12 +23,8 @@ async function notify(tx: Tx, userIds: number[], title: string, body: string, hr
   if (ids.length) await tx.insert(schema.notifications).values(ids.map((userId) => ({ userId, title, body, href })));
 }
 
-/** HR approves employees; if there is no current HR, admins do. Only an admin with no other admin self-approves. Bug #1 */
-function approvers(requester: User, current: User[]) {
-  const all = current.filter((u) => u.id !== requester.id);
-  const primary = all.filter((u) => u.role === approverRole(requester.role));
-  return primary.length ? primary : all.filter((u) => u.role === "admin");
-}
+/** everyone who can decide this person's requests. Only an admin with no other admin self-approves. Bug #1 */
+const approvers = (requester: User, current: User[]) => current.filter((u) => u.id !== requester.id && canApprove(u.role, requester.role));
 
 /** current: everyone signed in-able right now (getUsers), read before the transaction */
 async function finalize(tx: Tx, req: Request, me: User, current: User[], title: string, body: string) {

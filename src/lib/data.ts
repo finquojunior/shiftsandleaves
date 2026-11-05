@@ -80,7 +80,6 @@ export function effectiveDay(user: User, date: string, rows: DayRow[]): DayState
 export async function getRequestsFor(user: User) {
   const inboxFor = async () => {
     if (user.role === "employee") return [];
-    const hrExists = (await db.query.users.findMany({ columns: noAvatar, where: eq(schema.users.role, "hr") })).some((u) => isCurrent(u));
     return db
       .select({ r: schema.requests })
       .from(schema.requests)
@@ -89,8 +88,7 @@ export async function getRequestsFor(user: User) {
         and(
           eq(schema.requests.status, "pending"),
           ne(schema.requests.userId, user.id),
-          // admins pick up employee requests when there is no current HR. Bug #1
-          user.role === "hr" ? eq(schema.users.role, "employee") : hrExists ? ne(schema.users.role, "employee") : undefined,
+          user.role === "hr" ? eq(schema.users.role, "employee") : undefined, // admins see everyone's
         ),
       )
       .orderBy(desc(schema.requests.createdAt))

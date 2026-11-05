@@ -72,9 +72,7 @@ export function weeksWithoutLeave(month: string, leaveDates: Set<string>) {
   return missing;
 }
 
-/** who approves whom. admins' requests go to another admin (auto-approve handled by caller if none). */
-export const approverRole = (r: Role): Role => (r === "employee" ? "hr" : "admin");
-
+/** who approves whom: admins approve anyone (never themselves; a sole admin auto-approves), HR approves employees. */
 export const canApprove = (approver: Role, requester: Role) =>
   approver === "admin" || (approver === "hr" && requester === "employee");
 

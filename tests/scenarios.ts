@@ -93,6 +93,7 @@ async function main() {
     ok("submit casual leave", r);
     check("request is pending", (await req(id(r))).status === "pending");
     check("HR notified", (await lastNotes("hr"))[0]?.title.includes("Mei Lin"));
+    check("admins notified too", (await lastNotes("admin"))[0]?.title.includes("Mei Lin"));
     fails("duplicate day rejected", await leave("sick", ["2026-11-10"]), /already have leave/);
     await as("hr");
     fails("reject needs a reason", await decide(id(r), false, ""), /reason/);
@@ -222,6 +223,13 @@ async function main() {
     await as("hr"); fails("HR cannot approve another HR", await decide(id(h), true), /can't approve/);
     check("HR inbox excludes other HR", !(await getRequestsFor(await U("hr@team.local"))).inbox.some((x) => x.id === id(h)));
     check("admin inbox includes HR request", (await getRequestsFor(await U("admin@team.local"))).inbox.some((x) => x.id === id(h)));
+    await as("mei");
+    const e = await leave("sick", ["2026-11-24"]);
+    const adminInbox = (await getRequestsFor(await U("admin@team.local"))).inbox;
+    check("admin inbox includes employee request while HR exists", adminInbox.some((x) => x.id === id(e)));
+    check("HR inbox still has it", (await getRequestsFor(await U("hr@team.local"))).inbox.some((x) => x.id === id(e)));
+    ok("admin can reject an employee request", await (await as("admin"), decide(id(e), false, "Not this week")));
+    check("rejected request leaves HR inbox", !(await getRequestsFor(await U("hr@team.local"))).inbox.some((x) => x.id === id(e)));
   });
 
   await G("09 No HR on the team", async () => {
